@@ -13,17 +13,24 @@ Requires: Python 3.7+, bleak
 """
 
 import asyncio
+import os
 import sys
+from pathlib import Path
+from dotenv import load_dotenv
+
+# pyrefly: ignore [missing-import]
 from bleak import BleakClient, BleakScanner
 
 # ==========================================
-# BLE UUIDs — must match the ESP32 firmware
+# BLE UUIDs & Configuration (.env Source of Truth)
 # ==========================================
-SERVICE_UUID       = "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
-SETTINGS_CHAR_UUID = "beb5483e-36e1-4688-b7f5-ea07361b26a8"
-DISTANCE_CHAR_UUID = "1c95d5e3-d8f7-413a-bf3d-7a2e5d7be87e"
+ENV_PATH = Path(__file__).resolve().parent / ".env"
+load_dotenv(dotenv_path=ENV_PATH)
 
-DEVICE_NAME = "ReverseCam"
+SERVICE_UUID       = os.getenv("BLE_SERVICE_UUID", "4fafc201-1fb5-459e-8fcc-c5c9c331914b")
+SETTINGS_CHAR_UUID = os.getenv("BLE_SETTINGS_CHAR_UUID", "beb5483e-36e1-4688-b7f5-ea07361b26a8")
+DISTANCE_CHAR_UUID = os.getenv("BLE_DISTANCE_CHAR_UUID", "1c95d5e3-d8f7-413a-bf3d-7a2e5d7be87e")
+DEVICE_NAME        = os.getenv("BLE_DEVICE_NAME", "ReverseCam")
 
 # ==========================================
 # Setting definitions

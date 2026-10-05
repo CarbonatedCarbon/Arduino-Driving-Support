@@ -1,4 +1,5 @@
 #include "Wire.h"
+#include <Preferences.h>
 #include <BLEDevice.h>
 #include <BLEServer.h>
 #include <BLE2902.h>
@@ -10,6 +11,9 @@
 const int I2C_SDA_PIN = 21;
 const int I2C_SCL_PIN = 22;
 const int BUZZER_PIN  = 33;
+
+// Preferences flash storage handle
+Preferences prefs;
 
 // Buzzer Volume as percentage (0 = silent, 100 = max) — modifiable via BLE
 int buzzerVolume = 8;  // 8% — noticeably quieter
@@ -35,8 +39,10 @@ uint8_t buf[2] = { 0 };
 uint8_t dat = 0xB0;
 int distance = 0;
 
-// Buzzer Timer Variables
+// Buzzer & Sensor Timer Variables
 unsigned long previousMillis = 0;
+unsigned long lastSensorPoll = 0;
+const unsigned long SENSOR_INTERVAL = 60; // ms between distance readings
 bool buzzerState = LOW;
 
 // ==========================================
@@ -58,6 +64,36 @@ String buildSettingsCSV() {
          String(buzzerVolume);
 }
 
+// Loads calibration thresholds from non-volatile flash memory
+void loadSettings() {
+  prefs.begin("revcam", true); // Read-only
+  DISTANCE_MAX_WARNING = prefs.getInt("max_warn", 800);
+  DISTANCE_MID_ZONE    = prefs.getInt("mid_zone", 400);
+  DISTANCE_CLOSE_ZONE  = prefs.getInt("close_zone", 150);
+  DISTANCE_SOLID_TONE  = prefs.getInt("solid_tone", 30);
+  BEEP_FAR             = prefs.getInt("beep_far", 600);
+  BEEP_MID             = prefs.getInt("beep_mid", 300);
+  BEEP_CLOSE           = prefs.getInt("beep_close", 100);
+  buzzerVolume         = prefs.getInt("volume", 8);
+  prefs.end();
+  Serial.println("NVS: Settings loaded from flash: " + buildSettingsCSV());
+}
+
+// Persists calibration thresholds to non-volatile flash memory
+void saveSettings() {
+  prefs.begin("revcam", false); // Read-write
+  prefs.putInt("max_warn", DISTANCE_MAX_WARNING);
+  prefs.putInt("mid_zone", DISTANCE_MID_ZONE);
+  prefs.putInt("close_zone", DISTANCE_CLOSE_ZONE);
+  prefs.putInt("solid_tone", DISTANCE_SOLID_TONE);
+  prefs.putInt("beep_far", BEEP_FAR);
+  prefs.putInt("beep_mid", BEEP_MID);
+  prefs.putInt("beep_close", BEEP_CLOSE);
+  prefs.putInt("volume", buzzerVolume);
+  prefs.end();
+  Serial.println("NVS: Settings persisted to flash.");
+}
+
 class ServerCallbacks : public BLEServerCallbacks {
   void onConnect(BLEServer* pServer) override {
     deviceConnected = true;
@@ -75,7 +111,7 @@ class SettingsCallbacks : public BLECharacteristicCallbacks {
     String value = String(pCharacteristic->getValue().c_str());
     if (value.length() == 0) return;
 
-    // Parse CSV: "800,400,150,30,600,300,100"
+    // Parse CSV: "800,400,150,30,600,300,100,8"
     int parsed[8];
     int idx = 0;
     int startPos = 0;
@@ -96,6 +132,9 @@ class SettingsCallbacks : public BLECharacteristicCallbacks {
       BEEP_CLOSE           = parsed[6];
       buzzerVolume         = constrain(parsed[7], 0, 100);
 
+      // Persist across vehicle power cycles
+      saveSettings();
+
       String csv = buildSettingsCSV();
       pSettingsChar->setValue(csv.c_str());
       Serial.println("BLE: Settings updated — " + csv);
@@ -109,6 +148,9 @@ class SettingsCallbacks : public BLECharacteristicCallbacks {
 void setup() {
   Serial.begin(115200);
   
+  // Load persisted calibration settings from flash
+  loadSettings();
+
   // Initialize Buzzer PWM (LEDC)
   ledcAttach(BUZZER_PIN, 2000, 8);  // 2 kHz frequency, 8-bit resolution (0–255)
   ledcWrite(BUZZER_PIN, 0);         // Ensure buzzer is off on boot
@@ -149,29 +191,31 @@ void setup() {
 }
 
 void loop() {
-  // 1. Read the Sensor
-  writeReg(0x10, &dat, 1);
-  delay(50); // Sensor requires a short wait after writing
-  readReg(0x02, buf, 2);
-  
-  distance = buf[0] * 0x100 + buf[1] + 10;
-  
-  // 2. Output to Serial Monitor for debugging
-  Serial.print("Distance: ");
-  Serial.print(distance);
-  Serial.println(" mm");
+  unsigned long currentMillis = millis();
 
-  // 3. Update BLE distance (if connected)
-  if (deviceConnected) {
-    pDistanceChar->setValue(String(distance).c_str());
-    pDistanceChar->notify();
+  // 1. Non-blocking sensor polling interval
+  if (currentMillis - lastSensorPoll >= SENSOR_INTERVAL) {
+    lastSensorPoll = currentMillis;
+
+    // Trigger reading & read sensor registers
+    writeReg(0x10, &dat, 1);
+    readReg(0x02, buf, 2);
+    distance = buf[0] * 0x100 + buf[1] + 10;
+
+    // Output to Serial Monitor for debugging
+    Serial.print("Distance: ");
+    Serial.print(distance);
+    Serial.println(" mm");
+
+    // Update BLE distance (if connected)
+    if (deviceConnected) {
+      pDistanceChar->setValue(String(distance).c_str());
+      pDistanceChar->notify();
+    }
   }
 
-  // 4. Process the Buzzer Logic
+  // 2. Process the Buzzer Logic with precise non-blocking timing
   handleBuzzer(distance);
-  
-  // Small delay to prevent spamming the sensor too fast
-  delay(50); 
 }
 
 // ==========================================
