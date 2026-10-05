@@ -7,7 +7,8 @@ data/
 
 # Graphify: Track graph deliverables (graph.json, GRAPH_REPORT.md, graph.html),
 # but ignore machine-specific absolute paths, AST caches, and cost logs
-graphify-out/.graphify_*
+graphify-out/**/.graphify_*
+graphify-out/202*
 graphify-out/cache/
 graphify-out/cost.json
 
