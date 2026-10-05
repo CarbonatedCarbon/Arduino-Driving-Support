@@ -1,0 +1,18 @@
+[Unit]
+Description=ReverseCam Automotive Proximity Monitor & HUD
+After=bluetooth.target network.target
+Wants=bluetooth.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/reverse_cam
+EnvironmentFile=/home/pi/reverse_cam/.env
+ExecStart=/usr/bin/python3 /home/pi/reverse_cam/reverse_cam_runner.py
+Restart=always
+RestartSec=3
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
