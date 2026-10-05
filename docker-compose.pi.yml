@@ -1,0 +1,15 @@
+services:
+  # Raspberry Pi Production Deployment (Physical BLE with ESP32)
+  reverse-cam:
+    build: .
+    image: reverse-cam:latest
+    container_name: reverse_cam_prod
+    restart: unless-stopped
+    network_mode: host
+    privileged: true
+    volumes:
+      - /var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket
+      - ./data:/app/data
+      - ./.tmp:/app/.tmp
+      - ./.env:/app/.env
+    command: ["python", "reverse_cam_runner.py"]

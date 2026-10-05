@@ -1,0 +1,31 @@
+# Git & VCS
+.git
+.gitignore
+
+# Python cache & artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+
+# Workbench & Local Data
+.tmp/
+data/
+
+# IDE configurations
+.theia/
+.vscode/
+.agents/
+
+# Microcontroller firmware source (ESP32 Arduino code compiled via Arduino IDE)
+reverse_cam.ino
+
+# Windows batch files & local deployment scripts
+run_hud.bat
+start_reverse_cam.sh
+deploy/
+
+# Markdown documentation not needed in runtime container
+*.md

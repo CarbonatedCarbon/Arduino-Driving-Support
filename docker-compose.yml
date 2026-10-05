@@ -1,0 +1,71 @@
+services:
+  # 1. Simulation Mode (Default for Windows / macOS / Desktop testing)
+  # Runs the full HUD, proximity filter, and telemetry engine without needing BLE hardware.
+  reverse-cam-sim:
+    build: .
+    image: reverse-cam:latest
+    container_name: reverse_cam_sim
+    stdin_open: true
+    tty: true
+    volumes:
+      - ./data:/app/data
+      - ./.tmp:/app/.tmp
+      - ./.env:/app/.env
+    command: ["python", "reverse_cam_runner.py", "--simulate"]
+
+  # 2. Production Runner (Physical BLE with ESP32 - Raspberry Pi / Linux Host)
+  # Requires host BlueZ daemon and /var/run/dbus/system_bus_socket.
+  reverse-cam:
+    build: .
+    image: reverse-cam:latest
+    container_name: reverse_cam_prod
+    restart: unless-stopped
+    network_mode: host
+    privileged: true
+    stdin_open: true
+    tty: true
+    volumes:
+      - /var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket
+      - ./data:/app/data
+      - ./.tmp:/app/.tmp
+      - ./.env:/app/.env
+    command: ["python", "reverse_cam_runner.py"]
+
+  # 3. Interactive BLE Configuration CLI (pi_config.py)
+  config-tool:
+    build: .
+    image: reverse-cam:latest
+    container_name: reverse_cam_config
+    network_mode: host
+    privileged: true
+    stdin_open: true
+    tty: true
+    volumes:
+      - /var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket
+      - ./.env:/app/.env
+    command: ["python", "pi_config.py"]
+
+  # 4. Unit Testing Service
+  test:
+    build: .
+    image: reverse-cam:latest
+    container_name: reverse_cam_tests
+    volumes:
+      - ./data:/app/data
+      - ./.tmp:/app/.tmp
+      - ./tools:/app/tools
+      - ./tests:/app/tests
+      - ./graphify-out:/app/graphify-out
+    command: ["pytest"]
+
+  # 5. Graphify Knowledge Graph Service
+  graphify:
+    build: .
+    image: reverse-cam:latest
+    container_name: reverse_cam_graphify
+    stdin_open: true
+    tty: true
+    volumes:
+      - .:/app
+    entrypoint: ["graphify"]
+    command: [".", "--code-only"]
