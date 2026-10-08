@@ -3,6 +3,7 @@
 #include <BLEDevice.h>
 #include <BLEServer.h>
 #include <BLE2902.h>
+#include "env.h"
 
 // ==========================================
 // CONFIGURATION & SETTINGS
@@ -47,10 +48,8 @@ bool buzzerState = LOW;
 
 // ==========================================
 // BLE CONFIGURATION
+// (SERVICE_UUID, SETTINGS_CHAR_UUID, DISTANCE_CHAR_UUID loaded from env.h)
 // ==========================================
-#define SERVICE_UUID        "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
-#define SETTINGS_CHAR_UUID  "beb5483e-36e1-4688-b7f5-ea07361b26a8"
-#define DISTANCE_CHAR_UUID  "1c95d5e3-d8f7-413a-bf3d-7a2e5d7be87e"
 
 BLECharacteristic *pSettingsChar = nullptr;
 BLECharacteristic *pDistanceChar = nullptr;

@@ -1,5 +1,6 @@
 # Environment & Secrets
 .env
+env.h
 
 # Workbench & Runtime Data
 .tmp/
@@ -11,6 +12,9 @@ graphify-out/**/.graphify_*
 graphify-out/202*
 graphify-out/cache/
 graphify-out/cost.json
+
+#vibe-wise-agy
+.vibe-wise/
 
 # Python Cache & Virtual Environments
 __pycache__/
